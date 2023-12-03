@@ -15,5 +15,5 @@ python evaluate.py -d icews18 -c 101221152817_r[1,2,3]_n200_exp_s12_cands_r[1,2,
 
 ICEWS0515
 python learn.py -d icews0515 -l 1 2 3 -n 200 -p 15 -s 12
-python apply.py -d icews0515 -r 101221154157_r[1,2,3]_n200_exp_s12_rules.json -l 1 2 3 -w 1000 -p 8
+python apply.py -d ICEWS05-15_in -r 021223133951_r[1,2,3]_n200_exp_s12_rules.json -l 1 2 3 -w 0 -p 8
 python evaluate.py -d icews0515 -c 101221154157_r[1,2,3]_n200_exp_s12_cands_r[1,2,3]_w1000_score_12[0.1,0.5].json

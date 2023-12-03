@@ -47,8 +47,8 @@ learn_edges = store_edges(data.train_idx)
 
 score_func = score_12
 # It is possible to specify a list of list of arguments for tuning
-args = [[0.1, 0.5]]
-
+# args = [[0.1, 0.5]]
+args = [[np.float32(0.1), np.float32(0.5)]]
 
 def apply_rules(i, num_queries):
     """
@@ -136,12 +136,15 @@ def apply_rules(i, num_queries):
             if cands_dict[0]:
                 for s in range(len(args)):
                     # Calculate noisy-or scores
+                    # scores = list(
+                    #     map(
+                    #         lambda x: 1 - np.product(1 - np.array(x)),
+                    #         cands_dict[s].values(),
+                    #     )
+                    # )
                     scores = list(
-                        map(
-                            lambda x: 1 - np.product(1 - np.array(x)),
-                            cands_dict[s].values(),
-                        )
-                    )
+                        map(lambda x: 1 - np.product(1 - np.array(x, dtype=np.float32)), cands_dict[s].values()))
+
                     cands_scores = dict(zip(cands_dict[s].keys(), scores))
                     noisy_or_cands = dict(
                         sorted(cands_scores.items(), key=lambda x: x[1], reverse=True)
