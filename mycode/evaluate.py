@@ -1,6 +1,7 @@
 import json
 import argparse
 import numpy as np
+import pandas as pd
 
 import rule_application as ra
 from grapher import Grapher
@@ -9,9 +10,9 @@ from baseline import baseline_candidates, calculate_obj_distribution
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="", type=str)
+parser.add_argument("--dataset", "-d", default="ICEWS14RR", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--candidates", "-c", default="", type=str)
+parser.add_argument("--candidates", "-c", default="021223091230_r[1,2,3]_n200_exp_s12_cands_r[1,2,3]_w0_score_12[0.1,0.5].json", type=str)
 parser.add_argument("--filter_setting", "-s", default="best", type=str)
 parsed = vars(parser.parse_args())
 
@@ -97,8 +98,39 @@ hits_3 = 0
 hits_10 = 0
 mrr = 0
 
+
+def mean_rank_max(test, ranks):
+    test_data_no_time = pd.DataFrame([(s[0], s[1], s[2]) for s in list(test)]).astype(int)
+    e_list_count = test_data_no_time.value_counts()
+    freq_edge_test = list(zip(e_list_count.index, e_list_count.values))
+    max_ranks = np.ones(len(freq_edge_test))
+    for i in range(len(freq_edge_test)):
+        edge, count = freq_edge_test[i]
+        selected = (test[:, 1] == edge[1]) & (test[:, 0] == edge[0]) & (test[:, 2] == edge[2])
+        rank = np.array(ranks[selected], dtype=int)
+        max_ranks[i] = np.mean(1. / rank)
+    return np.mean(max_ranks)
+
+def hits_k_max(test, ranks):
+    # test = q.to('cpu').numpy()
+    # ranks = ranks.to('cpu').numpy()
+    test_data_no_time = pd.DataFrame([(s[0], s[1], s[2]) for s in list(test)])
+    e_list_count = test_data_no_time.value_counts()
+    freq_edge_test = list(zip(e_list_count.index, e_list_count.values))
+    hits_at = {}
+    for m in [1, 3, 10]:
+        max_ranks = np.ones(len(freq_edge_test))
+        for i in range(len(freq_edge_test)):
+            edge, count = freq_edge_test[i]
+            selected = (test[:, 1] == edge[1]) & (test[:, 0] == edge[0]) & (test[:, 2] == edge[2])
+            rank = np.array(ranks[selected], dtype=int)
+            max_ranks[i] = np.mean(rank <= m)
+        hits_at[m] = np.mean(max_ranks)
+    return hits_at
+
 num_samples = len(test_data)
 print("Evaluating " + candidates_file + ":")
+ranks = list()
 for i in range(num_samples):
     test_query = test_data[i]
     if all_candidates[i]:
@@ -109,7 +141,7 @@ for i in range(num_samples):
         )
     candidates = filter_candidates(test_query, candidates, test_data)
     rank = calculate_rank(test_query[2], candidates, num_entities, parsed['filter_setting'])
-
+    ranks.append(rank)
     if rank:
         if rank <= 10:
             hits_10 += 1
@@ -123,11 +155,16 @@ hits_1 /= num_samples
 hits_3 /= num_samples
 hits_10 /= num_samples
 mrr /= num_samples
+ranks = np.array(ranks)
+hits_macro = hits_k_max(test_data, ranks)
+macro_average = mean_rank_max(test_data, ranks)
 
 print("Hits@1: ", round(hits_1, 6))
 print("Hits@3: ", round(hits_3, 6))
 print("Hits@10: ", round(hits_10, 6))
 print("MRR: ", round(mrr, 6))
+print('Macro MRR:', macro_average)
+print('Macro Hits:', hits_macro)
 
 filename = candidates_file[:-5] + "_eval.txt"
 with open(dir_path + filename, "w", encoding="utf-8") as fout:
