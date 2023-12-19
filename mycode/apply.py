@@ -13,11 +13,11 @@ from score_functions import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="", type=str)
+parser.add_argument("--dataset", "-d", default="ICEWS14RR", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="", type=str)
-parser.add_argument("--rule_lengths", "-l", default=1, type=int, nargs="+")
-parser.add_argument("--window", "-w", default=-1, type=int)
+parser.add_argument("--rules", "-r", default="021223091230_r[1,2,3]_n200_exp_s12_rules.json", type=str)
+parser.add_argument("--rule_lengths", "-l", default=[3], type=int, nargs="+")
+parser.add_argument("--window", "-w", default=0, type=int)
 parser.add_argument("--top_k", default=20, type=int)
 parser.add_argument("--num_processes", "-p", default=1, type=int)
 parsed = vars(parser.parse_args())
@@ -38,12 +38,14 @@ rules_dict = json.load(open(dir_path + rules_file))
 rules_dict = {int(k): v for k, v in rules_dict.items()}
 print("Rules statistics:")
 rules_statistics(rules_dict)
+# 从rules_dict中筛选出满足要求的
 rules_dict = ra.filter_rules(
     rules_dict, min_conf=0.01, min_body_supp=2, rule_lengths=rule_lengths
 )
 print("Rules statistics after pruning:")
 rules_statistics(rules_dict)
-learn_edges = store_edges(data.train_idx)
+# 从训练集统计所有rel{rel: [edges]}
+# learn_edges = store_edges(data.train_idx)
 
 score_func = score_12
 # It is possible to specify a list of list of arguments for tuning
@@ -73,35 +75,37 @@ def apply_rules(i, num_queries):
     else:
         test_queries_idx = range(i * num_queries, len(test_data))
 
-    cur_ts = test_data[test_queries_idx[0]][3]
+    # cur_ts = test_data[test_queries_idx[0]][3]
     #edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
     #for interpolation task, valid/test not seen
-    edges = ra.get_window_edges(data.train_idx, cur_ts, learn_edges, window)
+    # learn_edges: 训练集的{rel: [edges]}, cur_ts: 测试集当前query的时间戳, edges: 从train筛选符合window的edges
+    # edges = ra.get_window_edges(data.train_idx, cur_ts, learn_edges, window)
 
     it_start = time.time()
-    for j in test_queries_idx:
-        test_query = test_data[j]
+    # 对test set中每条query计算所有可能的obj极其概率
+    for j, test_query in enumerate(test_data):
         cands_dict = [dict() for _ in range(len(args))]
 
-        if test_query[3] != cur_ts:
-            cur_ts = test_query[3]
-            #edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
+        cur_ts = test_query[3]
+        # edges = ra.get_window_edges(data.train_idx, cur_ts, None, window)
+        edges = ra.get_window_edges_df(data.train_idx, cur_ts, window)
+        # for interpolation task, valid/test not seen
 
-            # for interpolation task, valid/test not seen
-            edges = ra.get_window_edges(data.train_idx, cur_ts, learn_edges, window)
-
+        # 判断该query的rel是否具有rule
         if test_query[1] in rules_dict:
             dicts_idx = list(range(len(args)))
             for rule in rules_dict[test_query[1]]:
-                walk_edges = ra.match_body_relations(rule, edges, test_query[0])
+                # walk_edges = ra.match_body_relations(rule, edges, test_query[0])
+                rule_walks = ra.rule_matching(rule, edges, test_query[0])
 
-                if 0 not in [len(x) for x in walk_edges]:
-                    rule_walks = ra.get_walks(rule, walk_edges)
-                    if rule["var_constraints"]:
-                        rule_walks = ra.check_var_constraints(
-                            rule["var_constraints"], rule_walks
-                        )
-
+                # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0表示此rule畅通
+                if True:
+                #     rule_walks = ra.get_walks(rule, walk_edges)
+                #     if rule["var_constraints"]:
+                #         rule_walks = ra.check_var_constraints(
+                #             rule["var_constraints"], rule_walks
+                #         )
+# ------------------------------------------------------------------------------------------------------------------
                     if not rule_walks.empty:
                         cands_dict = ra.get_candidates(
                             rule,

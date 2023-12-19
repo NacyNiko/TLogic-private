@@ -81,6 +81,15 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
     return window_edges
 
 
+def get_window_edges_df(all_data, test_query_ts, window=0):
+    if window == 0:
+        window_edges = all_data[all_data[:, -1] <= test_query_ts]
+    elif window > 0:
+        window_edges = all_data[(all_data[:, -1] >= test_query_ts - window)
+                                & (all_data[:, -1] <= test_query_ts)]
+    return window_edges
+
+
 def match_body_relations(rule, edges, test_query_sub):
     """
     Find edges that could constitute walks (starting from the test query subject)
@@ -106,8 +115,9 @@ def match_body_relations(rule, edges, test_query_sub):
         mask = rel_edges[:, 0] == test_query_sub
         new_edges = rel_edges[mask]
         walk_edges = [
-            np.hstack((new_edges[:, 0:1], new_edges[:, 2:4]))
+            new_edges[:, [0, 2, 3]]
         ]  # [sub, obj, ts]
+        # Unique objs
         cur_targets = np.array(list(set(walk_edges[0][:, 1])))
 
         for i in range(1, len(rels)):
@@ -117,7 +127,7 @@ def match_body_relations(rule, edges, test_query_sub):
                 mask = np.any(rel_edges[:, 0] == cur_targets[:, None], axis=0)
                 new_edges = rel_edges[mask]
                 walk_edges.append(
-                    np.hstack((new_edges[:, 0:1], new_edges[:, 2:4]))
+                    new_edges[:, [0, 2, 3]]
                 )  # [sub, obj, ts]
                 cur_targets = np.array(list(set(walk_edges[i][:, 1])))
             except KeyError:
@@ -380,3 +390,50 @@ def verbalize_walk(walk, data):
         walk_str += data.id2ts[walk[3 * j + 3]] + "\t"
 
     return walk_str[:-1]
+
+
+def rule_matching(rule, edges, head):
+    body_rels = rule['body_rels']
+    var_constraints = rule['var_constraints']
+    # filter by body_rels
+    mask = np.isin(edges[:, 1], body_rels)
+    edges = edges[mask]
+    edges = pd.DataFrame(edges)
+    ents = [head]
+    if len(body_rels) == 3:
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2', 'entity_3'])
+    elif len(body_rels) == 2:
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2'])
+    elif len(body_rels) == 1:
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1'])
+    rule_walks = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'last_t'])
+    flag = True
+    for i, rel in enumerate(body_rels):
+        next_lel = edges[(edges.iloc[:, 0].isin(ents)) & (edges.iloc[:, 1] == rel)]
+        next_lel = next_lel.rename(columns={0: f'entity_{i}', 2: f'entity_{i+1}', 3: f'last_t', 1: 'rel'})
+        if next_lel.shape[0] == 0:
+            flag = False
+            rule_walks = tmp
+            break
+        if i == 0:
+            rule_walks = pd.concat([rule_walks, next_lel], axis=0)
+            rule_walks.loc[:, 'timestamp_0'] = rule_walks['last_t']
+        else:
+            rule_walks = pd.merge(rule_walks, next_lel, on=f'entity_{i}')
+            rule_walks = rule_walks[rule_walks[f'last_t_y'] >= rule_walks['last_t_x']]
+            # rule_walks[f'entity_{i+1}_x'] = rule_walks[f'entity_{i+1}_y']
+            rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
+            rule_walks.drop(['last_t_x'], inplace=True, axis=1)
+        ents = list(rule_walks[f'entity_{i+1}'].unique())
+
+    if flag:
+        desired_columns = [col for col in rule_walks.columns if col.startswith('entity') or col.startswith('timestamp')]
+        rule_walks = rule_walks[desired_columns]
+        for cons in var_constraints:
+            a, b = cons
+            rule_walks = rule_walks[rule_walks[f'entity_{a}'] == rule_walks[f'entity_{b}']]
+    return rule_walks
+
+
+
+
