@@ -417,9 +417,11 @@ def rule_matching(rule, edges, head):
             break
         if i == 0:
             rule_walks = pd.concat([rule_walks, next_lel], axis=0)
+            next_lel = next_lel[0:0]
             rule_walks.loc[:, 'timestamp_0'] = rule_walks['last_t']
         else:
             rule_walks = pd.merge(rule_walks, next_lel, on=f'entity_{i}')
+            next_lel = next_lel[0:0]
             rule_walks = rule_walks[rule_walks[f'last_t_y'] >= rule_walks['last_t_x']]
             # rule_walks[f'entity_{i+1}_x'] = rule_walks[f'entity_{i+1}_y']
             rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
