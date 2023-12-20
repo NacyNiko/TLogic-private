@@ -1,4 +1,6 @@
 import json
+import sys
+
 import numpy as np
 import pandas as pd
 from collections import Counter
@@ -393,6 +395,14 @@ def verbalize_walk(walk, data):
 
 
 def rule_matching(rule, edges, head):
+    def constraint(rw, nl):
+        for cons in var_constraints:
+            a, b = cons
+            if f'entity_{a}' in rw.columns and f'entity_{b}' in nl.columns:
+                rw = rw[rw.loc[:, f'entity_{a}'].isin(nl.loc[:, f'entity_{b}'])]
+                nl = nl[nl.loc[:, f'entity_{b}'].isin(rw.loc[:, f'entity_{a}'])]
+        return rw, nl
+
     body_rels = rule['body_rels']
     var_constraints = rule['var_constraints']
     # filter by body_rels
@@ -407,12 +417,12 @@ def rule_matching(rule, edges, head):
     elif len(body_rels) == 1:
         tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1'])
     rule_walks = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'last_t'])
-    flag = True
+
     for i, rel in enumerate(body_rels):
         next_lel = edges[(edges.iloc[:, 0].isin(ents)) & (edges.iloc[:, 1] == rel)]
         next_lel = next_lel.rename(columns={0: f'entity_{i}', 2: f'entity_{i+1}', 3: f'last_t', 1: 'rel'})
+        next_lel.drop(columns='rel', inplace=True)
         if next_lel.shape[0] == 0:
-            flag = False
             rule_walks = tmp
             break
         if i == 0:
@@ -420,6 +430,7 @@ def rule_matching(rule, edges, head):
             next_lel = next_lel[0:0]
             rule_walks.loc[:, 'timestamp_0'] = rule_walks['last_t']
         else:
+            rule_walks, next_lel = constraint(rule_walks, next_lel)
             rule_walks = pd.merge(rule_walks, next_lel, on=f'entity_{i}')
             next_lel = next_lel[0:0]
             rule_walks = rule_walks[rule_walks[f'last_t_y'] >= rule_walks['last_t_x']]
@@ -427,14 +438,8 @@ def rule_matching(rule, edges, head):
             rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
             rule_walks.drop(['last_t_x'], inplace=True, axis=1)
         ents = list(rule_walks[f'entity_{i+1}'].unique())
-
-    if flag:
-        desired_columns = [col for col in rule_walks.columns if col.startswith('entity') or col.startswith('timestamp')]
-        rule_walks = rule_walks[desired_columns]
-        for cons in var_constraints:
-            a, b = cons
-            rule_walks = rule_walks[rule_walks[f'entity_{a}'] == rule_walks[f'entity_{b}']]
     return rule_walks
+
 
 
 

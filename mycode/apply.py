@@ -13,9 +13,9 @@ from score_functions import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="ICEWS14RR", type=str)
+parser.add_argument("--dataset", "-d", default="GDELT", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="021223091230_r[1,2,3]_n200_exp_s12_rules.json", type=str)
+parser.add_argument("--rules", "-r", default="121223140547_r[1,2,3]_n200_exp_s12_rules.json", type=str)
 parser.add_argument("--rule_lengths", "-l", default=[3], type=int, nargs="+")
 parser.add_argument("--window", "-w", default=0, type=int)
 parser.add_argument("--top_k", default=20, type=int)
@@ -100,11 +100,11 @@ def apply_rules(i, num_queries):
 
                 # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0表示此rule畅通
                 if True:
-                #     rule_walks = ra.get_walks(rule, walk_edges)
-                #     if rule["var_constraints"]:
-                #         rule_walks = ra.check_var_constraints(
-                #             rule["var_constraints"], rule_walks
-                #         )
+                    # rule_walks = ra.get_walks(rule, walk_edges)
+                    # if rule["var_constraints"]:
+                    #     rule_walks = ra.check_var_constraints(
+                    #         rule["var_constraints"], rule_walks
+                    #     )
 # ------------------------------------------------------------------------------------------------------------------
                     if not rule_walks.empty:
                         cands_dict = ra.get_candidates(
@@ -136,7 +136,7 @@ def apply_rules(i, num_queries):
                                 dicts_idx.remove(s)
                         if not dicts_idx:
                             break
-
+                        rule_walks = rule_walks[0:0]
             if cands_dict[0]:
                 for s in range(len(args)):
                     # Calculate noisy-or scores
@@ -158,7 +158,6 @@ def apply_rules(i, num_queries):
                 no_cands_counter += 1
                 for s in range(len(args)):
                     all_candidates[s][j] = dict()
-
         else:  # No rules exist for this relation
             no_cands_counter += 1
             for s in range(len(args)):
