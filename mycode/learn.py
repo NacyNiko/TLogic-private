@@ -9,7 +9,7 @@ from rule_learning import Rule_Learner, rules_statistics
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="", type=str)
+parser.add_argument("--dataset", "-d", default="ICEWS14", type=str)
 parser.add_argument("--rule_lengths", "-l", default="3", type=int, nargs="+")
 parser.add_argument("--num_walks", "-n", default="100", type=int)
 parser.add_argument("--transition_distr", default="exp", type=str)

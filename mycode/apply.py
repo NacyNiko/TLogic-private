@@ -3,6 +3,7 @@ import time
 import argparse
 import itertools
 import numpy as np
+import pandas as pd
 from joblib import Parallel, delayed
 
 import rule_application as ra
@@ -48,7 +49,7 @@ rules_statistics(rules_dict)
 # learn_edges = store_edges(data.train_idx)
 
 score_func = score_12
-# It is possible to specify a list of list of arguments for tuning
+# It is possible to specify a list of arguments for tuning
 # args = [[0.1, 0.5]]
 args = [[np.float32(0.1), np.float32(0.5)]]
 

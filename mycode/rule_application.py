@@ -79,7 +79,6 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
         window_edges = store_edges(all_data[mask])
     elif window == -1:
         window_edges = learn_edges
-
     return window_edges
 
 
@@ -89,6 +88,7 @@ def get_window_edges_df(all_data, test_query_ts, window=0):
     elif window > 0:
         window_edges = all_data[(all_data[:, -1] >= test_query_ts - window)
                                 & (all_data[:, -1] <= test_query_ts)]
+    # window_edges = np.unique(window_edges, axis=0)
     return window_edges
 
 
@@ -422,7 +422,7 @@ def rule_matching(rule, edges, head):
         next_lel = edges[(edges.iloc[:, 0].isin(ents)) & (edges.iloc[:, 1] == rel)]
         next_lel = next_lel.rename(columns={0: f'entity_{i}', 2: f'entity_{i+1}', 3: f'last_t', 1: 'rel'})
         next_lel.drop(columns='rel', inplace=True)
-        if next_lel.shape[0] == 0:
+        if next_lel.shape[0] == 0 or rule_walks.shape[0] == 0:
             rule_walks = tmp
             break
         if i == 0:
@@ -431,15 +431,29 @@ def rule_matching(rule, edges, head):
             rule_walks.loc[:, 'timestamp_0'] = rule_walks['last_t']
         else:
             rule_walks, next_lel = constraint(rule_walks, next_lel)
-            rule_walks = pd.merge(rule_walks, next_lel, on=f'entity_{i}')
+            rule_walks = piecewise_merge(rule_walks, next_lel, i)
+            # rule_walks = pd.merge(rule_walks, next_lel
+            #                       , on=f'entity_{i}', how='inner')
             next_lel = next_lel[0:0]
-            rule_walks = rule_walks[rule_walks[f'last_t_y'] >= rule_walks['last_t_x']]
+            # rule_walks = rule_walks[rule_walks[f'last_t_y'] >= rule_walks['last_t_x']]
             # rule_walks[f'entity_{i+1}_x'] = rule_walks[f'entity_{i+1}_y']
-            rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
-            rule_walks.drop(['last_t_x'], inplace=True, axis=1)
+            # rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
+            # rule_walks.drop(['last_t_x'], inplace=True, axis=1)
         ents = list(rule_walks[f'entity_{i+1}'].unique())
     return rule_walks
 
+
+def piecewise_merge(df1, df2, j):
+    length = df2.shape[0]
+    final_df = pd.DataFrame(columns=df1.columns)
+    for i in range(0, length, 200):
+        tmp_df = df2.iloc[i:i + 200, :]
+        tmp_df1 = pd.merge(df1, tmp_df, on=f'entity_{j}', how='inner')
+        tmp_df1 = tmp_df1[tmp_df1[f'last_t_y'] >= tmp_df1['last_t_x']]
+        tmp_df1.rename(columns={'last_t_y': 'last_t'}, inplace=True)
+        tmp_df1.drop(['last_t_x'], inplace=True, axis=1)
+        final_df = pd.concat([final_df, tmp_df1], axis=0)
+    return final_df
 
 
 
