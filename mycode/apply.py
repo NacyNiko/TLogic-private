@@ -14,11 +14,11 @@ from score_functions import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="GDELT", type=str)
+parser.add_argument("--dataset", "-d", default="", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="121223140547_r[1,2,3]_n200_exp_s12_rules.json", type=str)
-parser.add_argument("--rule_lengths", "-l", default=[3], type=int, nargs="+")
-parser.add_argument("--window", "-w", default=0, type=int)
+parser.add_argument("--rules", "-r", default="", type=str)
+parser.add_argument("--rule_lengths", "-l", default=[1, 2, 3], type=int, nargs="+")
+parser.add_argument("--window", "-w", default=200, type=int)
 parser.add_argument("--top_k", default=20, type=int)
 parser.add_argument("--num_processes", "-p", default=1, type=int)
 parsed = vars(parser.parse_args())
@@ -84,12 +84,13 @@ def apply_rules(i, num_queries):
 
     it_start = time.time()
     # 对test set中每条query计算所有可能的obj极其概率
-    for j, test_query in enumerate(test_data):
+    for j in test_queries_idx:
+        test_query = test_data[j]
         cands_dict = [dict() for _ in range(len(args))]
 
         cur_ts = test_query[3]
         # edges = ra.get_window_edges(data.train_idx, cur_ts, None, window)
-        edges = ra.get_window_edges_df(data.train_idx, cur_ts, window)
+        edges = ra.get_window_edges_df(data.all_idx, cur_ts, window)
         # for interpolation task, valid/test not seen
 
         # 判断该query的rel是否具有rule
@@ -98,7 +99,7 @@ def apply_rules(i, num_queries):
             for rule in rules_dict[test_query[1]]:
                 # walk_edges = ra.match_body_relations(rule, edges, test_query[0])
                 rule_walks = ra.rule_matching(rule, edges, test_query[0])
-
+                a= 1
                 # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0表示此rule畅通
                 if True:
                     # rule_walks = ra.get_walks(rule, walk_edges)

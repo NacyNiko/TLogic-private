@@ -84,10 +84,10 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
 
 def get_window_edges_df(all_data, test_query_ts, window=0):
     if window == 0:
-        window_edges = all_data[all_data[:, -1] <= test_query_ts]
+        window_edges = all_data[all_data[:, -1] < test_query_ts]
     elif window > 0:
         window_edges = all_data[(all_data[:, -1] >= test_query_ts - window)
-                                & (all_data[:, -1] <= test_query_ts)]
+                                & (all_data[:, -1] < test_query_ts)]
     # window_edges = np.unique(window_edges, axis=0)
     return window_edges
 
@@ -404,6 +404,8 @@ def rule_matching(rule, edges, head):
         return rw, nl
 
     body_rels = rule['body_rels']
+    if body_rels == [283,283,283]:
+        pass
     var_constraints = rule['var_constraints']
     # filter by body_rels
     mask = np.isin(edges[:, 1], body_rels)
@@ -411,18 +413,18 @@ def rule_matching(rule, edges, head):
     edges = pd.DataFrame(edges)
     ents = [head]
     if len(body_rels) == 3:
-        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2', 'entity_3'])
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2', 'entity_3'], dtype=int)
     elif len(body_rels) == 2:
-        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2'])
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'entity_2'], dtype=int)
     elif len(body_rels) == 1:
-        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1'])
-    rule_walks = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'last_t'])
+        tmp = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1'], dtype=int)
+    rule_walks = pd.DataFrame(columns=['entity_0', 'timestamp_0', 'entity_1', 'last_t'], dtype=int)
 
     for i, rel in enumerate(body_rels):
         next_lel = edges[(edges.iloc[:, 0].isin(ents)) & (edges.iloc[:, 1] == rel)]
         next_lel = next_lel.rename(columns={0: f'entity_{i}', 2: f'entity_{i+1}', 3: f'last_t', 1: 'rel'})
         next_lel.drop(columns='rel', inplace=True)
-        if next_lel.shape[0] == 0 or rule_walks.shape[0] == 0:
+        if next_lel.shape[0] == 0:
             rule_walks = tmp
             break
         if i == 0:
@@ -439,8 +441,17 @@ def rule_matching(rule, edges, head):
             # rule_walks[f'entity_{i+1}_x'] = rule_walks[f'entity_{i+1}_y']
             # rule_walks.rename(columns={'last_t_y': 'last_t'}, inplace=True)
             # rule_walks.drop(['last_t_x'], inplace=True, axis=1)
-        ents = list(rule_walks[f'entity_{i+1}'].unique())
-    return rule_walks
+        if not rule_walks.empty:
+            ents = list(rule_walks[f'entity_{i+1}'].unique())
+        else:
+            break
+    if not rule_walks.empty:
+        for cons in var_constraints:
+            a, b = cons
+            rule_walks = rule_walks[rule_walks[f'entity_{a}'] == rule_walks[f'entity_{b}']]
+        return rule_walks.astype(int)
+    else:
+        return tmp
 
 
 def piecewise_merge(df1, df2, j):
