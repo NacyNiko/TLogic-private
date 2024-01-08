@@ -455,15 +455,17 @@ def rule_matching(rule, edges, head):
 
 
 def piecewise_merge(df1, df2, j):
+    df1, df2 = df1.astype(int), df2.astype(int)
     length = df2.shape[0]
     final_df = pd.DataFrame(columns=df1.columns)
-    for i in range(0, length, 200):
-        tmp_df = df2.iloc[i:i + 200, :]
+    for i in range(0, length, 100):
+        tmp_df = df2.iloc[i:i + 100, :]
         tmp_df1 = pd.merge(df1, tmp_df, on=f'entity_{j}', how='inner')
         tmp_df1 = tmp_df1[tmp_df1[f'last_t_y'] >= tmp_df1['last_t_x']]
         tmp_df1.rename(columns={'last_t_y': 'last_t'}, inplace=True)
         tmp_df1.drop(['last_t_x'], inplace=True, axis=1)
         final_df = pd.concat([final_df, tmp_df1], axis=0)
+        final_df = final_df.astype(int)
     return final_df
 
 

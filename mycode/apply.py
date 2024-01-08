@@ -14,11 +14,11 @@ from score_functions import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="", type=str)
+parser.add_argument("--dataset", "-d", default="GDELT", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="", type=str)
+parser.add_argument("--rules", "-r", default="121223140547_r[1,2,3]_n200_exp_s12_rules.json", type=str)
 parser.add_argument("--rule_lengths", "-l", default=[1, 2, 3], type=int, nargs="+")
-parser.add_argument("--window", "-w", default=200, type=int)
+parser.add_argument("--window", "-w", default=1000, type=int)
 parser.add_argument("--top_k", default=20, type=int)
 parser.add_argument("--num_processes", "-p", default=1, type=int)
 parsed = vars(parser.parse_args())
@@ -99,7 +99,6 @@ def apply_rules(i, num_queries):
             for rule in rules_dict[test_query[1]]:
                 # walk_edges = ra.match_body_relations(rule, edges, test_query[0])
                 rule_walks = ra.rule_matching(rule, edges, test_query[0])
-                a= 1
                 # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0表示此rule畅通
                 if True:
                     # rule_walks = ra.get_walks(rule, walk_edges)
