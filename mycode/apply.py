@@ -14,9 +14,9 @@ from score_functions import score_12
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", "-d", default="GDELT", type=str)
+parser.add_argument("--dataset", "-d", default="ICEWS14RR", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="121223140547_r[1,2,3]_n200_exp_s12_rules.json", type=str)
+parser.add_argument("--rules", "-r", default="021223091230_r[1,2,3]_n200_exp_s12_rules.json", type=str)
 parser.add_argument("--rule_lengths", "-l", default=[1, 2, 3], type=int, nargs="+")
 parser.add_argument("--window", "-w", default=1000, type=int)
 parser.add_argument("--top_k", default=20, type=int)
@@ -39,13 +39,13 @@ rules_dict = json.load(open(dir_path + rules_file))
 rules_dict = {int(k): v for k, v in rules_dict.items()}
 print("Rules statistics:")
 rules_statistics(rules_dict)
-# 从rules_dict中筛选出满足要求的
+# select rule from rules_dict
 rules_dict = ra.filter_rules(
-    rules_dict, min_conf=0.01, min_body_supp=2, rule_lengths=rule_lengths
+    rules_dict, min_conf=0.01, min_body_supp=2, rule_lengths=rule_lengths  # min_conf, min_body_supp too low
 )
 print("Rules statistics after pruning:")
 rules_statistics(rules_dict)
-# 从训练集统计所有rel{rel: [edges]}
+# all rel{rel: [edges]} in training set
 # learn_edges = store_edges(data.train_idx)
 
 score_func = score_12
@@ -79,11 +79,11 @@ def apply_rules(i, num_queries):
     # cur_ts = test_data[test_queries_idx[0]][3]
     #edges = ra.get_window_edges(data.all_idx, cur_ts, learn_edges, window)
     #for interpolation task, valid/test not seen
-    # learn_edges: 训练集的{rel: [edges]}, cur_ts: 测试集当前query的时间戳, edges: 从train筛选符合window的edges
+    # learn_edges: training set {rel: [edges]}, cur_ts: current timestamp of test set query, edges: select edges within window
     # edges = ra.get_window_edges(data.train_idx, cur_ts, learn_edges, window)
 
     it_start = time.time()
-    # 对test set中每条query计算所有可能的obj极其概率
+    # get possibility of each query answer from test set
     for j in test_queries_idx:
         test_query = test_data[j]
         cands_dict = [dict() for _ in range(len(args))]
@@ -93,13 +93,13 @@ def apply_rules(i, num_queries):
         edges = ra.get_window_edges_df(data.all_idx, cur_ts, window)
         # for interpolation task, valid/test not seen
 
-        # 判断该query的rel是否具有rule
+        # if rel has rule
         if test_query[1] in rules_dict:
             dicts_idx = list(range(len(args)))
             for rule in rules_dict[test_query[1]]:
                 # walk_edges = ra.match_body_relations(rule, edges, test_query[0])
                 rule_walks = ra.rule_matching(rule, edges, test_query[0])
-                # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0表示此rule畅通
+                # if 0 not in [len(x) for x in walk_edges]:  # len(x) != 0 means this rule works
                 if True:
                     # rule_walks = ra.get_walks(rule, walk_edges)
                     # if rule["var_constraints"]:

@@ -84,7 +84,7 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
 
 def get_window_edges_df(all_data, test_query_ts, window=0):
     if window == 0:
-        window_edges = all_data[all_data[:, -1] < test_query_ts]
+        window_edges = all_data[all_data[:, -1] <= test_query_ts]
     elif window > 0:
         window_edges = all_data[(all_data[:, -1] >= test_query_ts - window)
                                 & (all_data[:, -1] < test_query_ts)]
@@ -404,8 +404,6 @@ def rule_matching(rule, edges, head):
         return rw, nl
 
     body_rels = rule['body_rels']
-    if body_rels == [283,283,283]:
-        pass
     var_constraints = rule['var_constraints']
     # filter by body_rels
     mask = np.isin(edges[:, 1], body_rels)
@@ -432,6 +430,7 @@ def rule_matching(rule, edges, head):
             next_lel = next_lel[0:0]
             rule_walks.loc[:, 'timestamp_0'] = rule_walks['last_t']
         else:
+            # entity constraints before merging
             rule_walks, next_lel = constraint(rule_walks, next_lel)
             rule_walks = piecewise_merge(rule_walks, next_lel, i)
             # rule_walks = pd.merge(rule_walks, next_lel
@@ -454,7 +453,7 @@ def rule_matching(rule, edges, head):
         return tmp
 
 
-def piecewise_merge(df1, df2, j):
+def piecewise_merge(df1, df2, j):  # time constraints before merging
     df1, df2 = df1.astype(int), df2.astype(int)
     length = df2.shape[0]
     final_df = pd.DataFrame(columns=df1.columns)
@@ -464,8 +463,11 @@ def piecewise_merge(df1, df2, j):
         tmp_df1 = tmp_df1[tmp_df1[f'last_t_y'] >= tmp_df1['last_t_x']]
         tmp_df1.rename(columns={'last_t_y': 'last_t'}, inplace=True)
         tmp_df1.drop(['last_t_x'], inplace=True, axis=1)
-        final_df = pd.concat([final_df, tmp_df1], axis=0)
-        final_df = final_df.astype(int)
+        try:
+            final_df = pd.concat([final_df, tmp_df1], axis=0)
+            final_df = final_df.astype(int)
+        except Exception:
+            pass
     return final_df
 
 
