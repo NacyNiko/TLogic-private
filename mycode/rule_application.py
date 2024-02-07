@@ -342,7 +342,7 @@ def get_candidates(
 
 
 def save_candidates(
-    rules_file, dir_path, all_candidates, rule_lengths, window, score_func_str
+    rules_file, dir_path, all_candidates, rule_lengths, window, score_func_str, conf, sup
 ):
     """
     Save the candidates.
@@ -362,8 +362,8 @@ def save_candidates(
     all_candidates = {int(k): v for k, v in all_candidates.items()}
     for k in all_candidates:
         all_candidates[k] = {int(cand): v for cand, v in all_candidates[k].items()}
-    filename = "{0}_cands_r{1}_w{2}_{3}.json".format(
-        rules_file[:-11], rule_lengths, window, score_func_str
+    filename = "{0}_cands_r{1}_w{2}_{3}_{4}_{5}.json".format(
+        rules_file[:-11], rule_lengths, window, score_func_str, conf, sup
     )
     filename = filename.replace(" ", "")
     with open(dir_path + filename, "w", encoding="utf-8") as fout:

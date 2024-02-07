@@ -16,11 +16,13 @@ from score_functions import score_12
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", "-d", default="ICEWS14RR", type=str)
 parser.add_argument("--test_data", default="test", type=str)
-parser.add_argument("--rules", "-r", default="021223091230_r[1,2,3]_n200_exp_s12_rules.json", type=str)
+parser.add_argument("--rules", "-r", default="050224151059_r[1,2,3]_n200_exp_s12_rules.json", type=str)
 parser.add_argument("--rule_lengths", "-l", default=[1, 2, 3], type=int, nargs="+")
 parser.add_argument("--window", "-w", default=1000, type=int)
 parser.add_argument("--top_k", default=20, type=int)
-parser.add_argument("--num_processes", "-p", default=1, type=int)
+parser.add_argument("--num_processes", "-p", default=8, type=int)
+parser.add_argument("--min_conf", "-mc", type=float)
+parser.add_argument("--min_body_support", "-mbs", type=int)
 parsed = vars(parser.parse_args())
 
 dataset = parsed["dataset"]
@@ -29,6 +31,8 @@ window = parsed["window"]
 top_k = parsed["top_k"]
 num_processes = parsed["num_processes"]
 rule_lengths = parsed["rule_lengths"]
+min_conf = parsed['min_conf']
+mbs = parsed['min_body_support']
 rule_lengths = [rule_lengths] if (type(rule_lengths) == int) else rule_lengths
 
 dataset_dir = "../data/" + dataset + "/"
@@ -41,7 +45,7 @@ print("Rules statistics:")
 rules_statistics(rules_dict)
 # select rule from rules_dict
 rules_dict = ra.filter_rules(
-    rules_dict, min_conf=0.01, min_body_supp=2, rule_lengths=rule_lengths  # min_conf, min_body_supp too low
+    rules_dict, min_conf=min_conf, min_body_supp=mbs, rule_lengths=rule_lengths  # min_conf, min_body_supp too low
 )
 print("Rules statistics after pruning:")
 rules_statistics(rules_dict)
@@ -208,4 +212,6 @@ for s in range(len(args)):
         rule_lengths,
         window,
         score_func_str,
+        min_conf,
+        mbs,
     )
